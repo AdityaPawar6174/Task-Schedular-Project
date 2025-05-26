@@ -1,5 +1,6 @@
 <?php
 require_once 'functions.php';
 
-// Send task reminders to all subscribers.
+// Main entry to send reminder emails every hour
 sendTaskReminders();
+?>

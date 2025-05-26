@@ -1,1 +1,4 @@
-// Store the data in JSON format.
+68345dd161dd2|Read Books...|1
+68345df865750|get your groceries|0
+68345e19c5ab2|Go to Saloon|1
+68345e4983efb|Have Capachino at Starbucks...!!!|0
