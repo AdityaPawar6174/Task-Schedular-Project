@@ -1,113 +1,211 @@
 <?php
 
-/**
- * Adds a new task to the task list
- * 
- * @param string $task_name The name of the task to add.
- * @return bool True on success, false on failure.
- */
-function addTask( string $task_name ): bool {
-	$file  = __DIR__ . '/tasks.txt';
-	// TODO: Implement this function
+function addTask($task_name) {
+    $task_name = trim($task_name);
+    if (empty($task_name)) return;
+
+    $tasks = getAllTasks();
+    foreach ($tasks as $task) {
+        if ($task['name'] === $task_name) return;
+    }
+
+    $id = uniqid();
+    file_put_contents('tasks.txt', "$id|$task_name|0\n", FILE_APPEND);
 }
 
-/**
- * Retrieves all tasks from the tasks.txt file
- * 
- * @return array Array of tasks. -- Format [ id, name, completed ]
- */
-function getAllTasks(): array {
-	$file = __DIR__ . '/tasks.txt';
-	// TODO: Implement this function
+function getAllTasks() {
+    $tasks = [];
+
+    if (!file_exists('tasks.txt')) return $tasks;
+
+    $lines = file('tasks.txt', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+
+    foreach ($lines as $line) {
+        $parts = explode('|', trim($line));
+        
+        if (count($parts) === 3) {
+            list($id, $name, $completed) = $parts;
+            $tasks[] = [
+                'id' => $id,
+                'name' => $name,
+                'completed' => $completed
+            ];
+        }
+    }
+
+    return $tasks;
 }
 
-/**
- * Marks a task as completed or uncompleted
- * 
- * @param string  $task_id The ID of the task to mark.
- * @param bool $is_completed True to mark as completed, false to mark as uncompleted.
- * @return bool True on success, false on failure
- */
-function markTaskAsCompleted( string $task_id, bool $is_completed ): bool {
-	$file  = __DIR__ . '/tasks.txt';
-	// TODO: Implement this function
+
+function markTaskAsCompleted($task_id, $is_completed) {
+    $tasks = getAllTasks();
+    $output = '';
+    foreach ($tasks as $task) {
+        $completed = ($task['id'] == $task_id) ? $is_completed : $task['completed'];
+        $output .= "{$task['id']}|{$task['name']}|$completed\n";
+    }
+    file_put_contents('tasks.txt', $output);
 }
 
-/**
- * Deletes a task from the task list
- * 
- * @param string $task_id The ID of the task to delete.
- * @return bool True on success, false on failure.
- */
-function deleteTask( string $task_id ): bool {
-	$file  = __DIR__ . '/tasks.txt';
-	// TODO: Implement this function
+function deleteTask($task_id) {
+    $tasks = getAllTasks();
+    $output = '';
+    foreach ($tasks as $task) {
+        if ($task['id'] !== $task_id) {
+            $output .= "{$task['id']}|{$task['name']}|{$task['completed']}\n";
+        }
+    }
+    file_put_contents('tasks.txt', $output);
 }
 
-/**
- * Generates a 6-digit verification code
- * 
- * @return string The generated verification code.
- */
-function generateVerificationCode(): string {
-	// TODO: Implement this function
+function generateVerificationCode() {
+    return str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
 }
 
-/**
- * Subscribe an email address to task notifications.
- *
- * Generates a verification code, stores the pending subscription,
- * and sends a verification email to the subscriber.
- *
- * @param string $email The email address to subscribe.
- * @return bool True if verification email sent successfully, false otherwise.
- */
-function subscribeEmail( string $email ): bool {
-	$file = __DIR__ . '/pending_subscriptions.txt';
-	// TODO: Implement this function
+
+function subscribeEmail($email) {
+    $code = rand(100000, 999999);
+
+    // Prevent duplicate pending subscriptions
+    if (file_exists('pending_subscriptions.txt')) {
+        $pending = file('pending_subscriptions.txt', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        foreach ($pending as $line) {
+            $parts = explode('|', trim($line));
+            if (count($parts) < 2) continue;
+            list($pendingEmail, $pendingCode) = $parts;
+            if ($pendingEmail === $email) {
+                return "Verification already pending for this email.";
+            }
+        }
+    }
+
+    // Save to pending
+    file_put_contents('pending_subscriptions.txt', "$email|$code\n", FILE_APPEND);
+
+    // Verification link
+    $encodedEmail = urlencode($email);
+    $verificationLink = "http://localhost/task-scheduler-AdityaPawar6174/src/verify.php?email=$encodedEmail&code=$code";
+
+    // HTML message
+    $subject = "Verify Your Task Scheduler Subscription";
+    $message = "
+    <html>
+    <body>
+        <h2>Confirm Your Subscription</h2>
+        <p>Thank you for subscribing to Task Scheduler reminders.</p>
+        <p>Please click the link below to verify your email:</p>
+        <a href=\"$verificationLink\">Verify My Email</a>
+        <p>If you didn’t request this, you can ignore this email.</p>
+    </body>
+    </html>
+    ";
+
+    // Headers
+    $headers  = "MIME-Version: 1.0\r\n";
+    $headers .= "Content-type: text/html; charset=UTF-8\r\n";
+    $headers .= "From: Task Scheduler <no-reply@example.com>\r\n";
+
+    mail($email, $subject, $message, $headers);
+
+    return true;
 }
 
-/**
- * Verifies an email subscription
- * 
- * @param string $email The email address to verify.
- * @param string $code The verification code.
- * @return bool True on success, false on failure.
- */
-function verifySubscription( string $email, string $code ): bool {
-	$pending_file     = __DIR__ . '/pending_subscriptions.txt';
-	$subscribers_file = __DIR__ . '/subscribers.txt';
-	// TODO: Implement this function
+
+
+function verifySubscription($email, $code) {
+    if (!file_exists('pending_subscriptions.txt')) return false;
+
+    $lines = file('pending_subscriptions.txt', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    $new_lines = [];
+    $is_verified = false;
+
+	foreach ($lines as $line) {
+		$parts = explode('|', trim($line));
+		if (count($parts) === 2) {
+			list($pendingEmail, $pendingCode) = $parts;
+			if ($pendingEmail === $email && $pendingCode === $code) {
+				// Move to verified
+				file_put_contents('subscribers.txt', "$email\n", FILE_APPEND);
+				$is_verified = true;
+			} else {
+				$new_lines[] = $line;
+			}
+		} else {
+			
+		}
+	}	
+
+    file_put_contents('pending_subscriptions.txt', implode("\n", $new_lines) . "\n");
+
+    return $is_verified;
 }
 
-/**
- * Unsubscribes an email from the subscribers list
- * 
- * @param string $email The email address to unsubscribe.
- * @return bool True on success, false on failure.
- */
-function unsubscribeEmail( string $email ): bool {
-	$subscribers_file = __DIR__ . '/subscribers.txt';
-	// TODO: Implement this function
+
+
+function unsubscribeEmail($email) {
+    if (!file_exists('subscribers.txt')) return;
+
+    $subscribers = file('subscribers.txt', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    $subscribers = array_filter($subscribers, fn($sub) => trim($sub) !== $email);
+
+    file_put_contents('subscribers.txt', implode("\n", $subscribers) . "\n");
 }
 
-/**
- * Sends task reminders to all subscribers
- * Internally calls  sendTaskEmail() for each subscriber
- */
-function sendTaskReminders(): void {
-	$subscribers_file = __DIR__ . '/subscribers.txt';
-	// TODO: Implement this function
+
+
+function sendTaskReminders() {
+    $tasks = getAllTasks();
+    $pending_tasks = array_filter($tasks, fn($task) => !$task['completed']);
+
+    if (empty($pending_tasks)) return;
+
+    if (!file_exists('subscribers.txt')) return;
+
+    $subscribers = file('subscribers.txt', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($subscribers as $email) {
+        sendTaskEmail($email, $pending_tasks);
+    }
 }
 
-/**
- * Sends a task reminder email to a subscriber with pending tasks.
- *
- * @param string $email The email address of the subscriber.
- * @param array $pending_tasks Array of pending tasks to include in the email.
- * @return bool True if email was sent successfully, false otherwise.
- */
-function sendTaskEmail( string $email, array $pending_tasks ): bool {
-	$subject = 'Task Planner - Pending Tasks Reminder';
-	// TODO: Implement this function
+
+
+function sendTaskEmail($email, $pending_tasks) {
+    $subject = "Task Planner - Pending Tasks Reminder";
+
+    // Build HTML task list
+    $taskListHtml = "<ul>";
+    foreach ($pending_tasks as $task) {
+        $taskListHtml .= "<li>" . htmlspecialchars($task['name']) . "</li>";
+    }
+    $taskListHtml .= "</ul>";
+
+    // Unsubscribe link
+    $encodedEmail = urlencode(base64_encode($email));
+    $unsubscribeLink = "http://localhost/task-scheduler-AdityaPawar6174/src/unsubscribe.php?email={$encodedEmail}";
+
+    // Complete HTML message
+    $message = "
+    <html>
+    <head>
+        <title>Task Reminder</title>
+    </head>
+    <body>
+        <h2>Pending Tasks Reminder</h2>
+        <p>Here are your current pending tasks:</p>
+        $taskListHtml
+        <p>
+            <a href=\"$unsubscribeLink\" style=\"color:red;\">Unsubscribe from notifications</a>
+        </p>
+    </body>
+    </html>
+    ";
+
+    // Proper HTML headers
+    $headers  = "MIME-Version: 1.0\r\n";
+    $headers .= "Content-type: text/html; charset=UTF-8\r\n";
+    $headers .= "From: Task Planner <no-reply@example.com>\r\n";
+
+    // Send email
+    mail($email, $subject, $message, $headers);
 }
+
