@@ -62,55 +62,6 @@ function generateVerificationCode() {
     return str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
 }
 
-// function subscribeEmail($email) {
-//     $email = trim($email);
-    
-//     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-//         return "Invalid email address.";
-//     }
-
-//     // Checks if already subscribed
-//     if (file_exists('subscribers.txt')) {
-//         $subscribers = file('subscribers.txt', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-//         if (in_array($email, $subscribers)) {
-//             return "Email is already subscribed.";
-//         }
-//     }
-
-
-// if (file_exists('pending_subscriptions.txt')) {
-//     $pending = file('pending_subscriptions.txt', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-//     foreach ($pending as $line) {
-//         $parts = explode('|', trim($line));
-//         if (count($parts) === 2) {
-//             list($pendingEmail, $code) = $parts;
-//             if ($pendingEmail === $email) {
-//                 return "Verification already pending for this email.";
-//             }
-//         }
-//     }
-// }
-
-
-//     $code = generateVerificationCode();
-//     file_put_contents('pending_subscriptions.txt', "$email|$code\n", FILE_APPEND);
-
-//     // Sending verification email
-//     $verification_link = "http://localhost/task-scheduler-AdityaPawar6174/src/verify.php?email=" . urlencode($email) . "&code=$code";
-
-//     $subject = "Verify subscription to Task Planner";
-//     $message = "
-//     <p>Click the link below to verify your subscription to Task Planner:</p>
-//     <p><a id=\"verification-link\" href=\"$verification_link\">Verify Subscription</a></p>
-//     ";
-//     $headers = "MIME-Version: 1.0\r\n";
-//     $headers .= "Content-type:text/html;charset=UTF-8\r\n";
-//     $headers .= "From: no-reply@example.com\r\n";
-
-//     mail($email, $subject, $message, $headers);
-
-//     return "Verification email sent.";
-// }
 
 function subscribeEmail($email) {
     $code = rand(100000, 999999);
